@@ -3,13 +3,25 @@
   "version": "1.0.50",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
+    "dev": "bun run --watch src/index.ts",
+    "dev:debug": "bun --debug run --watch src/index.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/cors": "1.4.0",
+    "@elysiajs/jwt": "1.4.0",
+    "@elysiajs/openapi": "1.4.2",
+    "@prisma/client": "^6.16.1",
+    "elysia": "1.4.4",
+    "elysia-helmet": "^3.0.0",
+    "elysia-rate-limit": "4.4.0",
+    "envalid": "8.1.0",
+    "ioredis": "5.7.0",
+    "pino": "9.9.5",
+    "redis": "5.8.2"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "1.2.21",
+    "prisma": "6.16.1"
   },
   "module": "src/index.js"
 }
