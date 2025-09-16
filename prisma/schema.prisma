@@ -45,7 +45,9 @@ model Role {
   id             String           @id @default(cuid())
   name           String           @unique
   description    String?
+  identifier     String           @unique
   users          User[]
+  isDefault      Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   RolePermission RolePermission[]

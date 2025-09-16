@@ -1,63 +1,110 @@
-import jwt from "@elysiajs/jwt";
-import Elysia, { t } from "elysia";
-import { db } from "../lib/db";
-import { getBearerToken } from "../utils";
-import { redis } from "bun";
-import { env } from "../utils/env";
-import { AuthenticationError, NotFoundError } from "../utils/errors";
+import jwt from '@elysiajs/jwt';
+import Elysia, { t } from 'elysia';
+import { db } from '../lib/db';
+import { getBearerToken } from '../utils';
+import { redis } from 'bun';
+import { env } from '../utils/env';
+import { AuthenticationError, NotFoundError } from '../utils/errors';
+import { JWTPayloadT } from '../types/jwt';
+import { authProtect } from '../guards/auth-guard';
+import bearer from '@elysiajs/bearer';
 
-const userRoutes = new Elysia()
-  .state("userId", String())
+const userRoutes = new Elysia({ prefix: '/users' })
+  .state('userId', String())
   .use(
     jwt({
-      name: "jwt",
+      name: 'jwt',
       secret: env.JWT_SECRET,
-      schema: t.Object({
-        userId: t.String(),
-      }),
-    })
+      schema: JWTPayloadT,
+    }),
   )
-  .group("/users", (app) =>
-    app.guard(
-      {
-        beforeHandle: async ({ jwt, request, set, store }) => {
-          const authHeader = request.headers.get("Authorization");
-          const token = getBearerToken(authHeader);
-
-          if (!token) {
-            throw new AuthenticationError(
-              "Authorization header missing or malformed"
-            );
-          }
-
-          const isBlacklisted = await redis.exists(`blacklist:${token}`);
-          if (isBlacklisted) {
-            throw new AuthenticationError("Token revoked");
-          }
-
-          const payload = await jwt.verify(token);
-
-          if (!payload) {
-            throw new AuthenticationError("Invalid or expired token");
-          }
-
-          store.userId = payload.userId;
+  .use(bearer())
+  .guard({
+    beforeHandle: async ({ bearer, store, jwt }) => {
+      await authProtect({ token: bearer, store, jwt });
+    },
+  })
+  .post(
+    '/me',
+    async ({ store }) => {
+      const user = await db.user.findUnique({
+        where: { id: store.userId },
+        select: {
+          id: true,
+          email: true,
+          role: {
+            select: {
+              id: true,
+              name: true,
+              identifier: true,
+              description: true,
+              RolePermission: {
+                include: {
+                  permission: true,
+                },
+              },
+            },
+          },
         },
+        // include: { role: true },
+      });
+
+      if (!user) {
+        throw new NotFoundError('User');
+      }
+
+      return {
+        ...user,
+        role: {
+          ...user.role,
+          permissions: user.role?.RolePermission.map((rp) => rp.permission),
+          RolePermission: undefined,
+        },
+      };
+    },
+    {
+      detail: {
+        tags: ['Users'],
+        summary: 'Get user information',
+        description:
+          'Retrieves the information of the currently authenticated user',
       },
-      (app) =>
-        app.post("/me", async ({ store, set }) => {
-          const user = await db.user.findUnique({
-            where: { id: store.userId },
-            select: { id: true, email: true },
-          });
+    },
+  )
+  .post(
+    '/:id/assign-role',
+    async ({ params, body }) => {
+      const { id } = params;
+      const { roleId } = body;
 
-          if (!user) {
-            throw new NotFoundError("User");
-          }
+      const user = await db.user.findUnique({ where: { id } });
+      if (!user) {
+        throw new NotFoundError('User');
+      }
 
-          return { userId: user.id, email: user.email };
-        })
-    )
+      const role = await db.role.findUnique({ where: { id: roleId } });
+      if (!role) {
+        throw new NotFoundError('Role');
+      }
+
+      await db.user.update({
+        where: { id },
+        data: {
+          role: { connect: { id: roleId } },
+        },
+      });
+      return { message: 'Role assigned to user successfully' };
+    },
+    {
+      body: t.Object({
+        roleId: t.String(),
+      }),
+      detail: {
+        tags: ['Users'],
+        summary: 'Assign role to user',
+        description: 'Assigns a role to a user by their IDs',
+      },
+    },
   );
 
 export default userRoutes;

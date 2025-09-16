@@ -1,1 +1,1 @@
-export * from './get-bearer-token'
+export * from './get-bearer-token';

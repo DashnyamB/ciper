@@ -1,14 +1,15 @@
-import pino from "pino";
+import pino from 'pino';
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  formatters: {
-    level: (label) => {
-      return { level: label.toUpperCase() };
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      ignore: 'pid,hostname',
+      translateTime: 'HH:MM:ss',
     },
   },
-  timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-// Optional: Create a child logger for HTTP requests
-export const httpLogger = logger.child({ module: "http" });
+export const httpLogger = logger.child({ module: 'http' });

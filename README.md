@@ -24,21 +24,26 @@
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/your-username/cipher-auth-service.git
    cd cipher-auth-service
    ```
 
 2. **Install dependencies**
+
    ```bash
    bun install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    ```
+
    Edit `.env` with your database and Redis credentials:
+
    ```env
    DATABASE_URL="postgresql://username:password@localhost:5432/cipher_auth"
    REDIS_URL="redis://localhost:6379"
@@ -46,6 +51,7 @@
    ```
 
 4. **Set up database**
+
    ```bash
    bunx prisma migrate dev
    ```
@@ -92,10 +98,15 @@ function App() {
 
 function ProtectedComponent() {
   const { user, signIn, signOut } = useAuth();
-  
-  if (!user) return <button onClick={() => signIn({ email, password })}>Sign In</button>;
-  
-  return <div>Welcome {user.email}! <button onClick={signOut}>Sign Out</button></div>;
+
+  if (!user)
+    return <button onClick={() => signIn({ email, password })}>Sign In</button>;
+
+  return (
+    <div>
+      Welcome {user.email}! <button onClick={signOut}>Sign Out</button>
+    </div>
+  );
 }
 ```
 
