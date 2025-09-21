@@ -1,15 +1,15 @@
 import jwt from '@elysiajs/jwt';
 import Elysia, { t } from 'elysia';
 import { db } from '../lib/db';
-import { getBearerToken } from '../utils';
-import { redis } from 'bun';
 import { env } from '../utils/env';
-import { AuthenticationError, NotFoundError } from '../utils/errors';
+import { NotFoundError } from '../utils/errors';
 import { JWTPayloadT } from '../types/jwt';
 import { authProtect } from '../guards/auth-guard';
 import bearer from '@elysiajs/bearer';
+import { rateLimit } from 'elysia-rate-limit';
 
 const userRoutes = new Elysia({ prefix: '/users' })
+  // .use(rateLimit({ max: 10, duration: 60 * 1000 })) // 10 requests per minute
   .state('userId', String())
   .use(
     jwt({

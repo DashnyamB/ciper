@@ -10,7 +10,11 @@ interface AuthProtectArgs {
   jwt: JWTType;
 }
 
-export const authProtect = async ({ token, store, jwt }: AuthProtectArgs) => {
+export const authProtect = async ({
+  token,
+  store,
+  jwt,
+}: AuthProtectArgs): Promise<string> => {
   if (!token) {
     throw new AuthenticationError('Authorization header missing or malformed');
   }
@@ -27,4 +31,5 @@ export const authProtect = async ({ token, store, jwt }: AuthProtectArgs) => {
   }
 
   store.userId = payload.userId;
+  return payload.userId;
 };

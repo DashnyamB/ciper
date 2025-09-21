@@ -2,11 +2,11 @@ import jwt from '@elysiajs/jwt';
 import { JWTPayloadT } from '../types/jwt';
 import { env } from '../utils/env';
 import bearer from '@elysiajs/bearer';
-import { authProtect } from '../guards/auth-guard';
 import Elysia, { t } from 'elysia';
 import { db } from '../lib/db';
+import { adminGuard } from '../guards/admin-guard';
 
-const permissionRoutes = new Elysia({ prefix: '/permissions' })
+const permissionRoutes = new Elysia({ prefix: '/admin/permissions' })
   .state('userId', String())
   .use(
     jwt({
@@ -16,11 +16,11 @@ const permissionRoutes = new Elysia({ prefix: '/permissions' })
     }),
   )
   .use(bearer())
-  //   .guard({
-  //     beforeHandle: async ({ bearer, store, jwt }) => {
-  //       await authProtect({ token: bearer, store, jwt });
-  //     },
-  //   })
+  .guard({
+    beforeHandle: async ({ bearer, store, jwt }) => {
+      await adminGuard({ token: bearer, store, jwt });
+    },
+  })
   .post(
     '',
     async ({ body }) => {
@@ -37,6 +37,11 @@ const permissionRoutes = new Elysia({ prefix: '/permissions' })
         description: t.Optional(t.String()),
       }),
     },
-  );
+  )
+  .delete('/:id', async ({ params }) => {
+    const { id } = params;
+    await db.permission.delete({ where: { id } });
+    return { success: true };
+  });
 
 export default permissionRoutes;

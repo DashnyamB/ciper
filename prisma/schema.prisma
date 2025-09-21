@@ -22,10 +22,8 @@ model User {
   updatedAt      DateTime       @updatedAt
   refreshTokens  RefreshToken[]
   roleId         String?
-  role           Role?           @relation(fields: [roleId], references: [id])
-
-  // You can add fields for email verification, profiles, etc. later.
-  // isEmailVerified Boolean @default(false)
+  role           Role?          @relation(fields: [roleId], references: [id])
+  APIKey         APIKey[]
 
   @@map("users")
 }
@@ -77,4 +75,16 @@ model RolePermission {
 
   @@unique([roleId, permissionId], name: "role_permission_unique")
   @@map("role_permissions")
+}
+
+model APIKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@map("api_keys")
 }

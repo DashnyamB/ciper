@@ -10,6 +10,8 @@ import { env } from './utils/env';
 import { rateLimit } from 'elysia-rate-limit';
 import { helmet } from 'elysia-helmet';
 import { logger } from './utils/logger';
+import staticPlugin from '@elysiajs/static';
+import apiKeyRoutes from './routes/api-key';
 
 interface ErrorResponse {
   error: string;
@@ -19,7 +21,6 @@ interface ErrorResponse {
 
 const app = new Elysia()
   // .use(helmet())
-  // .use(rateLimit())
   .use(
     cors({
       origin: '*',
@@ -37,6 +38,18 @@ const app = new Elysia()
       }),
     }),
   )
+  .use(
+    staticPlugin({
+      prefix: '/admin',
+      assets: 'public/admin',
+      alwaysStatic: true,
+    }),
+  )
+  // Catch-all route for admin UI SPA routing
+  .get('/admin', ({ set }) => {
+    set.headers['Content-Type'] = 'text/html';
+    return Bun.file('public/admin/index.html');
+  })
   .use(openapi())
   .onRequest(({ request }) => {
     logger.info(
@@ -53,6 +66,7 @@ const app = new Elysia()
   .use(userRoutes)
   .use(roleRoutes)
   .use(permissionRoutes)
+  .use(apiKeyRoutes)
   .onError(({ code, error, set, request }) => {
     const isStandardError = (e: unknown): e is Error => {
       return e instanceof Error;

@@ -13,6 +13,7 @@ generated/**
 # next.js
 /.next/
 /out/
+/public/admin
 
 # production
 /build

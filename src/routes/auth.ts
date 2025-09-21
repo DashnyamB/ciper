@@ -5,9 +5,10 @@ import { getBearerToken } from '../utils';
 import { redis } from 'bun';
 import { env } from '../utils/env';
 import { rateLimit } from 'elysia-rate-limit';
+import { SUPER_ADMIN_IDENTIFIER } from '../constants/super-admin';
 
 const authRoutes = new Elysia({ prefix: '/auth' })
-  .use(rateLimit({ max: 5, duration: 60 * 1000 })) // 5 requests per minute
+  .use(rateLimit({ max: 100, duration: 60 * 1000 })) // 10 requests per minute
   .use(
     jwt({
       name: 'jwt',
@@ -44,16 +45,22 @@ const authRoutes = new Elysia({ prefix: '/auth' })
     'signin',
     async ({ body, jwt, set }) => {
       const { email, password } = body;
-      const user = await db.user.findUnique({ where: { email } });
+      const user = await db.user.findUnique({
+        where: { email },
+        include: { role: true },
+      });
       if (!user) {
         set.status = 401;
         return { error: 'Invalid email or password' };
       }
+
       const isValid = await Bun.password.verify(password, user.hashedPassword);
-      if (!isValid) {
+
+      if (!isValid || user?.role?.identifier === SUPER_ADMIN_IDENTIFIER) {
         set.status = 401;
         return { error: 'Invalid email or password' };
       }
+
       const token = await jwt.sign({
         userId: user.id,
         exp: env.ACCESS_TOKEN_EXPIRY,
@@ -63,7 +70,7 @@ const authRoutes = new Elysia({ prefix: '/auth' })
     {
       body: t.Object({
         email: t.String({ format: 'email' }),
-        password: t.String({ minLength: 8 }),
+        password: t.String(),
       }),
     },
   )
@@ -87,7 +94,6 @@ const authRoutes = new Elysia({ prefix: '/auth' })
       const expiry = payload.exp;
       const now = Math.floor(Date.now() / 1000);
       const ttl = expiry ? expiry - now : 0;
-      console.log(expiry, now, ttl);
 
       if (ttl > 0) {
         // Here you would add the token to a blacklist store (e.g., Redis)
@@ -117,6 +123,39 @@ const authRoutes = new Elysia({ prefix: '/auth' })
           return { error: 'Invalid token' };
         }
       },
+    },
+  )
+  .post(
+    '/admin/signin',
+    async ({ body, jwt, set }) => {
+      const { email, password } = body;
+      const user = await db.user.findUnique({
+        where: { email, role: { identifier: SUPER_ADMIN_IDENTIFIER } },
+      });
+
+      if (!user) {
+        set.status = 401;
+        return { error: 'Invalid email or password' };
+      }
+
+      const isValid = await Bun.password.verify(password, user.hashedPassword);
+
+      if (!isValid) {
+        set.status = 401;
+        return { error: 'Invalid email or password' };
+      }
+
+      const token = await jwt.sign({
+        userId: user.id,
+        exp: env.ACCESS_TOKEN_EXPIRY,
+      });
+      return { token, user: { id: user.id, email: user.email } };
+    },
+    {
+      body: t.Object({
+        email: t.String({ format: 'email' }),
+        password: t.String(),
+      }),
     },
   )
   .post(

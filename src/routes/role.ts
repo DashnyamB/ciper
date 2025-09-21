@@ -2,11 +2,12 @@ import jwt from '@elysiajs/jwt';
 import Elysia, { t } from 'elysia';
 import { env } from '../utils/env';
 import bearer from '@elysiajs/bearer';
-import { authProtect } from '../guards/auth-guard';
 import { db } from '../lib/db';
 import { NotFoundError } from '../utils/errors';
+import { adminGuard } from '../guards/admin-guard';
+import { SUPER_ADMIN_IDENTIFIER } from '../constants/super-admin';
 
-const roleRoutes = new Elysia({ prefix: '/roles' })
+const roleRoutes = new Elysia({ prefix: '/admin/roles' })
   .state('userId', String())
   .use(
     jwt({
@@ -18,15 +19,20 @@ const roleRoutes = new Elysia({ prefix: '/roles' })
     }),
   )
   .use(bearer())
-  //   .guard({
-  //     beforeHandle: async ({ bearer, store, jwt }) => {
-  //       await authProtect({ token: bearer, store, jwt });
-  //     },
-  //   })
+  .guard({
+    beforeHandle: async ({ bearer, store, jwt }) => {
+      await adminGuard({ token: bearer, store, jwt });
+    },
+  })
   .post(
     '',
     async ({ body }) => {
       const { name, description, identifier } = body;
+
+      if (identifier === SUPER_ADMIN_IDENTIFIER) {
+        throw new Error('Cannot create role with reserved identifier');
+      }
+
       const role = await db.role.create({
         data: { name: name ?? identifier, identifier, description },
       });
@@ -52,6 +58,7 @@ const roleRoutes = new Elysia({ prefix: '/roles' })
     '',
     async () => {
       const roles = await db.role.findMany({
+        where: { isDefault: false },
         select: {
           id: true,
           name: true,
@@ -81,7 +88,7 @@ const roleRoutes = new Elysia({ prefix: '/roles' })
     const { id } = params;
     console.log(params);
     const role = await db.role.findUnique({
-      where: { id },
+      where: { id, isDefault: false },
       omit: { isDefault: true },
       include: {
         RolePermission: {
@@ -101,6 +108,50 @@ const roleRoutes = new Elysia({ prefix: '/roles' })
       RolePermission: undefined,
     };
   })
+  .delete('/:id', async ({ params, set }) => {
+    const { id } = params;
+    const role = await db.role.findUnique({ where: { id, isDefault: false } });
+    if (!role) {
+      throw new NotFoundError('Role');
+    }
+    if (role.isDefault) {
+      set.status = 400;
+      return { error: 'Cannot delete a default role' };
+    }
+
+    await db.role.delete({ where: { id } });
+    return { message: 'Role deleted successfully' };
+  })
+  .put(
+    '/:id',
+    async ({ params, body }) => {
+      const { id } = params;
+      const { name, description } = body;
+
+      const role = await db.role.findUnique({
+        where: { id, isDefault: false },
+      });
+      if (!role) {
+        throw new NotFoundError('Role');
+      }
+
+      const updatedRole = await db.role.update({
+        where: { id },
+        data: {
+          name: name ?? role.name,
+          description: description ?? role.description,
+        },
+      });
+
+      return { id: updatedRole.id };
+    },
+    {
+      body: t.Object({
+        name: t.Optional(t.String()),
+        description: t.Optional(t.String()),
+      }),
+    },
+  )
   .post(
     '/:id/assign',
     async ({ params, body }) => {

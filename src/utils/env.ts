@@ -8,4 +8,6 @@ export const env = cleanEnv(Bun.env, {
   PORT: num({ default: 3000 }),
   REDIS_URL: url({ default: 'redis://localhost:6379' }),
   JWT_SECRET: str(),
+  SUPER_ADMIN_EMAIL: str({ default: 'admin@test.com' }),
+  SUPER_ADMIN_PASSWORD: str({ default: 'admin' }),
 });
