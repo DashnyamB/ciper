@@ -5,7 +5,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
     "dev:debug": "bun --debug run --watch src/index.ts",
-    "format:fix": "prettier --write ."
+    "format:fix": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "bun run tsc &&  cp -r public dist/ && cp -r src/generated dist/"
   },
   "dependencies": {
     "@elysiajs/bearer": "1.4.1",
