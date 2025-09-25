@@ -6,7 +6,7 @@ import { NotFoundError } from '../utils/errors';
 import { JWTPayloadT } from '../types/jwt';
 import { authProtect } from '../guards/auth-guard';
 import bearer from '@elysiajs/bearer';
-import { rateLimit } from 'elysia-rate-limit';
+import { publicKeyValidator } from '../middleware/public-api-key-validator';
 
 const userRoutes = new Elysia({ prefix: '/users' })
   // .use(rateLimit({ max: 10, duration: 60 * 1000 })) // 10 requests per minute
@@ -22,6 +22,11 @@ const userRoutes = new Elysia({ prefix: '/users' })
   .guard({
     beforeHandle: async ({ bearer, store, jwt }) => {
       await authProtect({ token: bearer, store, jwt });
+    },
+  })
+  .guard({
+    beforeHandle: async ({ request }) => {
+      await publicKeyValidator({ request });
     },
   })
   .post(

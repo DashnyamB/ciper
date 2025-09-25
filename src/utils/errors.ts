@@ -16,6 +16,12 @@ export class AuthenticationError extends AppError {
   }
 }
 
+export class APIKeyError extends AppError {
+  constructor(message: string = 'Invalid API Key') {
+    super(message, 'API_KEY_ERROR', 401);
+  }
+}
+
 export class AuthorizationError extends AppError {
   constructor(message: string = 'Permission denied') {
     super(message, 'AUTHORIZATION_ERROR', 403);

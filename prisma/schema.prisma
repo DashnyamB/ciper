@@ -80,6 +80,7 @@ model RolePermission {
 model APIKey {
   id        String    @id @default(cuid())
   key       String    @unique
+  secret    String    @unique
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String

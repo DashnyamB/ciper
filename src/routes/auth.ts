@@ -6,9 +6,11 @@ import { redis } from 'bun';
 import { env } from '../utils/env';
 import { rateLimit } from 'elysia-rate-limit';
 import { SUPER_ADMIN_IDENTIFIER } from '../constants/super-admin';
+import { publicKeyValidator } from '../middleware/public-api-key-validator';
+import { privateKeyValidator } from '../middleware/private-api-key-validator';
 
 const authRoutes = new Elysia({ prefix: '/auth' })
-  .use(rateLimit({ max: 100, duration: 60 * 1000 })) // 10 requests per minute
+  .use(rateLimit({ max: 10, duration: 60 * 1000 }))
   .use(
     jwt({
       name: 'jwt',
@@ -20,7 +22,8 @@ const authRoutes = new Elysia({ prefix: '/auth' })
   )
   .post(
     'signup',
-    async ({ body, jwt }) => {
+    async ({ body, jwt, request }) => {
+      await privateKeyValidator({ request });
       const { email, password } = body;
       const hashedPassword = await Bun.password.hash(password);
 
@@ -42,13 +45,13 @@ const authRoutes = new Elysia({ prefix: '/auth' })
     },
   )
   .post(
-    'signin',
+    '/admin/signin',
     async ({ body, jwt, set }) => {
       const { email, password } = body;
       const user = await db.user.findUnique({
-        where: { email },
-        include: { role: true },
+        where: { email, role: { identifier: SUPER_ADMIN_IDENTIFIER } },
       });
+
       if (!user) {
         set.status = 401;
         return { error: 'Invalid email or password' };
@@ -56,7 +59,7 @@ const authRoutes = new Elysia({ prefix: '/auth' })
 
       const isValid = await Bun.password.verify(password, user.hashedPassword);
 
-      if (!isValid || user?.role?.identifier === SUPER_ADMIN_IDENTIFIER) {
+      if (!isValid) {
         set.status = 401;
         return { error: 'Invalid email or password' };
       }
@@ -125,14 +128,19 @@ const authRoutes = new Elysia({ prefix: '/auth' })
       },
     },
   )
+  .guard({
+    beforeHandle: async ({ request }) => {
+      await publicKeyValidator({ request });
+    },
+  })
   .post(
-    '/admin/signin',
-    async ({ body, jwt, set }) => {
+    'signin',
+    async ({ body, jwt, set, request }) => {
       const { email, password } = body;
       const user = await db.user.findUnique({
-        where: { email, role: { identifier: SUPER_ADMIN_IDENTIFIER } },
+        where: { email },
+        include: { role: true },
       });
-
       if (!user) {
         set.status = 401;
         return { error: 'Invalid email or password' };
@@ -140,7 +148,7 @@ const authRoutes = new Elysia({ prefix: '/auth' })
 
       const isValid = await Bun.password.verify(password, user.hashedPassword);
 
-      if (!isValid) {
+      if (!isValid || user?.role?.identifier === SUPER_ADMIN_IDENTIFIER) {
         set.status = 401;
         return { error: 'Invalid email or password' };
       }
@@ -158,6 +166,7 @@ const authRoutes = new Elysia({ prefix: '/auth' })
       }),
     },
   )
+
   .post(
     '/refresh',
     async ({ jwt, set, body }) => {

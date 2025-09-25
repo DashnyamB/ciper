@@ -29,7 +29,8 @@ const apiKeyRoutes = new Elysia({ prefix: '/admin/api-keys' })
         data: {
           userId: store.userId,
           name: 'Default name',
-          key: crypto.randomUUID(),
+          key: `ciper_key_${crypto.randomUUID()}`,
+          secret: `ciper_secret_${crypto.randomUUID()}`,
         },
       });
       return { apiKey: apiKey.key };
