@@ -56,6 +56,19 @@ CREATE TABLE "public"."role_permissions" (
     CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "public"."api_keys" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "secret" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3),
+
+    CONSTRAINT "api_keys_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "public"."users"("email");
 
@@ -74,6 +87,12 @@ CREATE UNIQUE INDEX "permissions_name_key" ON "public"."permissions"("name");
 -- CreateIndex
 CREATE UNIQUE INDEX "role_permissions_roleId_permissionId_key" ON "public"."role_permissions"("roleId", "permissionId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "api_keys_key_key" ON "public"."api_keys"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "api_keys_secret_key" ON "public"."api_keys"("secret");
+
 -- AddForeignKey
 ALTER TABLE "public"."users" ADD CONSTRAINT "users_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "public"."roles"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -85,3 +104,6 @@ ALTER TABLE "public"."role_permissions" ADD CONSTRAINT "role_permissions_roleId_
 
 -- AddForeignKey
 ALTER TABLE "public"."role_permissions" ADD CONSTRAINT "role_permissions_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "public"."permissions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."api_keys" ADD CONSTRAINT "api_keys_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

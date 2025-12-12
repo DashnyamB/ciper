@@ -5,6 +5,7 @@ export const env = cleanEnv(Bun.env, {
     default: 'postgresql://user:password@localhost:5432/cipher_auth',
   }),
   ACCESS_TOKEN_EXPIRY: str({ default: '15m' }),
+  REFRESH_TOKEN_EXPIRY: str({ default: '7d' }),
   PORT: num({ default: 3000 }),
   REDIS_URL: url({ default: 'redis://localhost:6379' }),
   JWT_SECRET: str(),

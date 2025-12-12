@@ -7,7 +7,6 @@ import { env } from '../utils/env';
 import { rateLimit } from 'elysia-rate-limit';
 import { SUPER_ADMIN_IDENTIFIER } from '../constants/super-admin';
 import { publicKeyValidator } from '../middleware/public-api-key-validator';
-import { privateKeyValidator } from '../middleware/private-api-key-validator';
 
 const authRoutes = new Elysia({ prefix: '/auth' })
   .use(rateLimit({ max: 10, duration: 60 * 1000 }))
@@ -23,7 +22,7 @@ const authRoutes = new Elysia({ prefix: '/auth' })
   .post(
     'signup',
     async ({ body, jwt, request }) => {
-      await privateKeyValidator({ request });
+      await publicKeyValidator({ request });
       const { email, password } = body;
       const hashedPassword = await Bun.password.hash(password);
 
@@ -31,11 +30,21 @@ const authRoutes = new Elysia({ prefix: '/auth' })
         data: { email, hashedPassword },
       });
 
-      const token = await jwt.sign({
+      const accessToken = await jwt.sign({
         userId: user.id,
         exp: env.ACCESS_TOKEN_EXPIRY,
       });
-      return { token, user: { id: user.id, email: user.email } };
+
+      const refreshToken = await jwt.sign({
+        userId: user.id,
+        exp: env.REFRESH_TOKEN_EXPIRY,
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email },
+      };
     },
     {
       body: t.Object({
@@ -153,11 +162,20 @@ const authRoutes = new Elysia({ prefix: '/auth' })
         return { error: 'Invalid email or password' };
       }
 
-      const token = await jwt.sign({
+      const accessToken = await jwt.sign({
         userId: user.id,
         exp: env.ACCESS_TOKEN_EXPIRY,
       });
-      return { token, user: { id: user.id, email: user.email } };
+
+      const refreshToken = await jwt.sign({
+        userId: user.id,
+        exp: env.REFRESH_TOKEN_EXPIRY,
+      });
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, role: user.role?.identifier },
+      };
     },
     {
       body: t.Object({
